@@ -8,7 +8,7 @@ function main() {
   const game = new Game({
     height: 4,
     width: 4,
-    numMines: 11
+    numMines: 5
   })
   const client = new Client(game)
   client.start()

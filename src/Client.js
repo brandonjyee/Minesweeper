@@ -21,7 +21,7 @@ class Client {
     this.game.on(GameState.LOSE, this.handleLose)
   }
 
-  showBoards() {
+  showAllBoards() {
     const gameBoard = this.game.getGameBoard()
     console.log('Game Board:')
     console.log(gameBoard)
@@ -31,23 +31,31 @@ class Client {
     console.log(userBoard)
   }
 
+  showBoard() {
+    const userBoard = this.game.getUserBoard()
+    console.log('User Board:')
+    console.log(userBoard)
+  }
+
   handleWin() {
+    this.showAllBoards()
     console.log('You Won!')
   }
 
   handleLose() {
-    this.showBoards()
+    this.showAllBoards()
     console.log('You Lose')
   }
 
   // Handlers
   handleAskInput() {
-    this.showBoards()
+    this.showBoard()
 
-    rl.question('Enter cell [Zero-based. Ex: 0 0]: ', (answer) => {
+    rl.question('Enter cell [One-based. Ex: 1 1]: ', (answer) => {
       const [row, col] = answer.trim().split(' ')
       console.log('You picked: ', row, col)
-      this.game.pickCell(row, col)
+      // Game pick is zero-based
+      this.game.pickCell(row - 1, col - 1)
     })
   }
 
