@@ -1,2 +1,6 @@
 # Minesweeper
-Command line minesweeper
+Command line minesweeper.
+
+npm install
+
+npm start
