@@ -1,5 +1,5 @@
 const fs = require('fs')
-const Game = require('./Game')
+const {Game} = require('./Game')
 const Client = require('./Client')
 
 function main() {

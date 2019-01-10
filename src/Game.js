@@ -14,7 +14,6 @@
 const EventEmitter = require('events');
 const GameState = require('./GameState');
 
-
 /**
  * Shuffles array in place. Fisher-Yates algo.
  * @param {Array} a items An array containing the items.
@@ -35,7 +34,7 @@ class Board {
     this.options = {
       height: 10,
       width: 10,
-      defaultChar: '0'
+      defaultChar: '0',
     };
     // Override default settings with any user-specified ones
     Object.assign(this.options, options);
@@ -58,90 +57,96 @@ class Board {
     }
   }
 
+  // Zero-based
   get(row, col) {
-    // Input validation. TODO
+    // Input validation.
+    if (row < 0 || row >= this.height || col < 0 || col >= this.width) {
+      throw new Error('Input out of bounds: ', row, col)
+    }
 
     return this.matrix[row][col];
   }
 
   // ==== Writes (State modification) ====
 
+  // Zero-based
   set(row, col, val) {
     // Input validation. TODO
 
     this.matrix[row][col] = val;
   }
-
 }
 
 class Player {}
 
-
 class Game extends EventEmitter {
   constructor(options = {}) {
-    super()
+    super();
     this.options = {
       height: 10,
       width: 10,
       numMines: 30,
       defaultGameChar: '0',
       defaultUserChar: '?',
-      mineChar: 'M'
-    }
-    Object.assign(this.options, options)
+      mineChar: 'M',
+
+      // Optionally configure state for testing
+      gameBoard: null,
+      userBoard: null,
+    };
+    Object.assign(this.options, options);
 
     // Modifiable State
-    this.reset()
+    this.reset();
 
-    // this.gameState = null;
-    // this.events = null;
-    // this.player = new Player();
     // Undo & Redo
   }
 
   // ==== Reads (No state modification) ====
   _getMineCount(board, row, col) {
-    const {mineChar} = this.options
+    const { mineChar } = this.options;
     function _isOutOfBounds(board, row, col) {
-      return (row < 0 || row >= board.height || col < 0 || col >= board.width)
+      return row < 0 || row >= board.height || col < 0 || col >= board.width;
     }
     function _mineCount(board, row, col) {
-      if (!_isOutOfBounds(board, row, col)
-          && board.get(row, col) === mineChar) {
-        return 1
+      if (
+        !_isOutOfBounds(board, row, col) &&
+        board.get(row, col) === mineChar
+      ) {
+        return 1;
       }
-      return 0
+      return 0;
     }
-    let count = 0
+    let count = 0;
     // U
-    count += _mineCount(board, row - 1, col)
+    count += _mineCount(board, row - 1, col);
     // UR
-    count += _mineCount(board, row - 1, col + 1)
+    count += _mineCount(board, row - 1, col + 1);
     // R
-    count += _mineCount(board, row, col + 1)
+    count += _mineCount(board, row, col + 1);
     // DR
-    count += _mineCount(board, row + 1, col + 1)
+    count += _mineCount(board, row + 1, col + 1);
     // D
-    count += _mineCount(board, row + 1, col)
+    count += _mineCount(board, row + 1, col);
     // DL
-    count += _mineCount(board, row + 1, col - 1)
+    count += _mineCount(board, row + 1, col - 1);
     // L
-    count += _mineCount(board, row, col - 1)
+    count += _mineCount(board, row, col - 1);
     // UL
-    count += _mineCount(board, row - 1, col - 1)
+    count += _mineCount(board, row - 1, col - 1);
 
-    return count
+    return count;
   }
 
   _copyBoard(board) {
-    const matrix = new Array(board.height)
+    const matrix = new Array(board.height);
     for (let i = 0; i < matrix.length; i++) {
-      matrix[i] = new Array(board.width)
+      matrix[i] = new Array(board.width);
       for (let j = 0; j < matrix[i].length; j++) {
-        matrix[i][j] = board.get(i, j)
+        matrix[i][j] = board.get(i, j);
       }
     }
-    return matrix
+    return matrix;
   }
 
   getUserBoard() {
@@ -156,89 +161,118 @@ class Game extends EventEmitter {
 
   _setupBoard() {
     // Set mines
-    this._setMines()
+    this._setMines();
     // Set numbers
-    this._setNumbers()
+    this._setNumbers();
   }
 
+  /* Pull out the calculation. Calculation accepts (height, width, numMines) and returns a list of (row, col) locations where the mines will go. Then _setMines() can use the output to set the mines in the matrix.
+  Will setMines take the list as a param? Maybe take out the whole boardSetup into a new class.
+
+  Maybe strategy impl lifecycle methods and delegate
+  setupBoards(gameBoard, userBoard)
+  handlePickCell(row, col)
+
+  Also pass in an emitter? So not tight coupling between Client and Game? Also Client sends msgs to server
+
+  - Handle variations on game logic. (playerInput, emits)
+  - Handle multiplayer
+  - Handle multiple games
+  - Handle undo/redo
+  - Handle multiple diff clients
+  */
   _setMines() {
-    const {height, width, numMines, mineChar} = this.options
-    const numCells = height * width
+    const { height, width, numMines, mineChar } = this.options;
+    const numCells = height * width;
     // TODO: check if numMines is > numCells
-    const nums = new Array(numCells)
+    const nums = new Array(numCells);
     for (let i = 0; i < nums.length; i++) {
-      nums[i] = i
+      nums[i] = i;
     }
     // Shuffle the nums in place
-    shuffle(nums)
+    shuffle(nums);
     // Pop off as many as you need
     for (let i = 0; i < numMines; i++) {
-      const idx = nums.pop()
-      const row = Math.floor(idx / width)
-      const col = Math.floor(idx % width)
-      this.gameBoard.set(row, col, mineChar)
+      const idx = nums.pop();
+      const row = Math.floor(idx / width);
+      const col = Math.floor(idx % width);
+      this.gameBoard.set(row, col, mineChar);
     }
   }
 
   _setNumbers() {
-    const {width, height, mineChar} = this.options
+    const { width, height, mineChar } = this.options;
     // For each cell
     for (let i = 0; i < height; i++) {
       for (let j = 0; j < width; j++) {
-        const cell = this.gameBoard.get(i, j)
-        if (cell === mineChar) continue
+        const cell = this.gameBoard.get(i, j);
+        if (cell === mineChar) continue;
 
-        const count = this._getMineCount(this.gameBoard, i, j)
-        this.gameBoard.set(i, j, count.toString())
+        const count = this._getMineCount(this.gameBoard, i, j);
+        this.gameBoard.set(i, j, count.toString());
       }
     }
   }
 
   pickCell(row, col) {
     // console.log('Game received pickCell:', row, col)
-    const {mineChar} = this.options
-    const gameCell = this.gameBoard.get(row, col)
-    this.userBoard.set(row, col, gameCell)
+    const { mineChar } = this.options;
+    const gameCell = this.gameBoard.get(row, col);
+    this.userBoard.set(row, col, gameCell);
     if (gameCell === mineChar) {
-      this.emit(GameState.LOSE)
+      this.emit(GameState.LOSE);
     } else {
       // TODO: Reveal other parts of the board if zeroes?
-      this.picksToWin--
+      this.picksToWin--;
       // console.log(this.picksToWin)
       if (this.picksToWin <= 0) {
-        this.emit(GameState.WIN)
+        this.emit(GameState.WIN);
       } else {
-        this.emit(GameState.ASK_USER_INPUT)
+        this.emit(GameState.ASK_USER_INPUT);
       }
     }
   }
 
   start() {
     //
-    this.reset()
-    this._setupBoard()
+    this.reset();
+    this._setupBoard();
     this.gameState = GameState.ASK_USER_INPUT;
-    this.emit(GameState.ASK_USER_INPUT)
+    this.emit(GameState.ASK_USER_INPUT);
   }
 
   reset() {
-    const {height, width, numMines, defaultGameChar, defaultUserChar} = this.options
-    this.gameBoard = new Board({
+    const {
       height,
       width,
-      defaultChar: defaultGameChar
-    });
-    this.userBoard = new Board({
+      numMines,
+      defaultGameChar,
+      defaultUserChar,
+      gameBoard,
+      userBoard
+    } = this.options;
+    this.gameBoard = gameBoard || new Board({
       height,
       width,
-      defaultChar: defaultUserChar
+      defaultChar: defaultGameChar,
     });
-    this.numCells = height * width
-    this.picksToWin = this.numCells - numMines
+    this.userBoard = userBoard || new Board({
+      height,
+      width,
+      defaultChar: defaultUserChar,
+    });
+    this.numCells = height * width;
+    this.picksToWin = this.numCells - numMines;
   }
 
   // undo() {}
   // redo() {}
 }
 
-module.exports = Game;
+class Minesweeper {
+  constructor() {
+
+  }
+}
+
+module.exports = { Game, Board };
